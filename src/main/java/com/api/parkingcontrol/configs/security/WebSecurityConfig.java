@@ -1,7 +1,9 @@
 package com.api.parkingcontrol.configs.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -11,8 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 // forma antiga de implementar o security
 
 // o @WebEnableWebSecurity desativa todas condigurações padrões do security
-@Configuration
+//@Configuration
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    UserDetailsServiceImplements userDetailsService;
 
     // esse método pertence ao webSecurityConfigurerAdapter
     // para customizar a configuração do http security
@@ -34,27 +39,38 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .httpBasic()
                 .and()
                 .authorizeHttpRequests()
+                .antMatchers(HttpMethod.GET, "/parking-spot/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/parking-spot").hasRole("USER")
+                .antMatchers(HttpMethod.DELETE, "/parking-spot/**").hasAnyRole("ADMIN")
                 .anyRequest().authenticated()
                 .and()
                 .csrf().disable();
     }
 
     // vamos utilizar uma autentificação por memoria para fins de aprendizagem
-    @Override
-    protected  void configure(AuthenticationManagerBuilder auth) throws Exception {
+//    @Override
+//    protected  void configure(AuthenticationManagerBuilder auth) throws Exception {
+//
+//        // precisa colocar pelo menos uma role, mas pode ter várias
+//        // o spring security olha um password encoder, não uma senha comum
+//        auth.inMemoryAuthentication()
+//                .withUser("luann")
+//                .password(passwordEncoder().encode("12345678"))
+//                .roles("ADMIN");
+//    }
 
-        // precisa colocar pelo menos uma role, mas pode ter várias
-        // o spring security olha um password encoder, não uma senha comum
-        auth.inMemoryAuthentication()
-                .withUser("luann")
-                .password(passwordEncoder().encode("12345678"))
-                .roles("ADMIN");
+    // autentificação com jpa agora
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService)
+                .passwordEncoder(passwordEncoder());
     }
 
     // essa função serve para encoder a senha, para que então o spring security
     // valide ela, eh um bean do próprio spring security
     @Bean
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 }
